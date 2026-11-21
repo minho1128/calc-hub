@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>분할매수 평단가 · 수수료 · 수익률 계산기</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
+    body { margin: 0; background: #f3f5f8; color: #181c22; padding: 16px; }
+    .container { max-width: 520px; margin: 0 auto; }
+    .ad-slot {
+      background: #e5e9f0; border: 1px dashed #9aa5b4; color: #4a5568;
+      text-align: center; padding: 14px; border-radius: 10px; font-size: 13px; margin-bottom: 14px;
+    }
+    .card {
+      background: #ffffff; border-radius: 14px; padding: 20px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06); margin-bottom: 14px;
+    }
+    h1 { font-size: 20px; margin: 0 0 6px; }
+    .sub { font-size: 13px; color: #5f6b7a; margin: 0 0 18px; }
+    .row-box {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 12px; margin-bottom: 10px;
+    }
+    .row-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    label { display: block; font-size: 12px; color: #4a5568; margin-bottom: 4px; }
+    input {
+      width: 100%; padding: 9px 10px; border: 1px solid #cbd5e1;
+      border-radius: 8px; font-size: 14px; background: #fff;
+    }
+    .btn-add {
+      width: 100%; padding: 10px; border: 1px solid #2563eb; background: #eff6ff;
+      color: #1d4ed8; font-weight: 700; border-radius: 8px; cursor: pointer; margin-bottom: 12px;
+    }
+    .extra-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .btn-calc {
+      width: 100%; padding: 14px; border: none; background: #111827;
+      color: #fff; font-size: 16px; font-weight: 700; border-radius: 10px; cursor: pointer;
+    }
+    .result-box {
+      display: none; background: #f0fdf4; border: 1px solid #86efac;
+      border-radius: 12px; padding: 16px; margin-top: 14px;
+    }
+    .res-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #dcfce7; font-size: 14px; }
+    .res-item:last-child { border-bottom: none; }
+    .res-val { font-weight: 700; color: #166534; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 상단 광고 영역 (승인 후 애드센스/애드핏 코드 교체) -->
+    <div class="ad-slot">상단 배너 광고 영역 (애드센스 / 애드핏)</div>
+
+    <div class="card">
+      <h1>분할매수 평단가 계산기</h1>
+      <p class="sub">매수 단가와 금액·수량을 입력하면 평균단가와 목표 매도가를 계산합니다.</p>
+
+      <div id="buyList">
+        <div class="row-box">
+          <div class="row-title"><span>1차 매수</span></div>
+          <div class="grid-2">
+            <div><label>매수가 (원/달러)</label><input type="number" step="any" class="price" placeholder="예: 1000"></div>
+            <div><label>투입금액 (원/달러)</label><input type="number" step="any" class="amt" placeholder="예: 100000"></div>
+          </div>
+        </div>
+        <div class="row-box">
+          <div class="row-title"><span>2차 추가매수</span></div>
+          <div class="grid-2">
+            <div><label>매수가 (원/달러)</label><input type="number" step="any" class="price" placeholder="예: 800"></div>
+            <div><label>투입금액 (원/달러)</label><input type="number" step="any" class="amt" placeholder="예: 100000"></div>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn-add" onclick="addBuyRow()">+ 매수 차수 추가</button>
+
+      <div class="extra-grid">
+        <div><label>현재가</label><input type="number" step="any" id="curPrice" placeholder="예: 900"></div>
+        <div><label>목표 수익(%)</label><input type="number" step="any" id="targetPct" value="10"></div>
+        <div><label>수수료율(%)</label><input type="number" step="any" id="feePct" value="0.05"></div>
+      </div>
+
+      <button type="button" class="btn-calc" onclick="calculate()">계산하기</button>
+
+      <div id="resultBox" class="result-box">
+        <div class="res-item"><span>평균 매수단가</span><span class="res-val" id="avgPrice">-</span></div>
+        <div class="res-item"><span>총 투입원금</span><span class="res-val" id="totalPrincipal">-</span></div>
+        <div class="res-item"><span>총 보유수량</span><span class="res-val" id="totalQty">-</span></div>
+        <div class="res-item"><span>현재 평가손익 (수수료 반영)</span><span class="res-val" id="curPnl">-</span></div>
+        <div class="res-item"><span>목표 수익률 도달가</span><span class="res-val" id="targetPrice">-</span></div>
+      </div>
+    </div>
+
+    <!-- 하단 광고 영역 -->
+    <div class="ad-slot">하단 배너 광고 영역 (애드센스 / 애드핏)</div>
+  </div>
+
+  <script>
+    let rowCount = 2;
+    function addBuyRow() {
+      rowCount++;
+      const div = document.createElement('div');
+      div.className = 'row-box';
+      div.innerHTML = `
+        <div class="row-title"><span>${rowCount}차 추가매수</span></div>
+        <div class="grid-2">
+          <div><label>매수가</label><input type="number" step="any" class="price" placeholder="단가 입력"></div>
+          <div><label>투입금액</label><input type="number" step="any" class="amt" placeholder="금액 입력"></div>
+        </div>
+      `;
+      document.getElementById('buyList').appendChild(div);
+    }
+
+    function fmt(num, dec = 2) {
+      if (!isFinite(num)) return '-';
+      return Number(num).toLocaleString('ko-KR', { maximumFractionDigits: dec });
+    }
+
+    function calculate() {
+      const prices = document.querySelectorAll('.price');
+      const amts = document.querySelectorAll('.amt');
+      let totalAmt = 0;
+      let totalQty = 0;
+
+      for (let i = 0; i < prices.length; i++) {
+        const p = parseFloat(prices[i].value);
+        const a = parseFloat(amts[i].value);
+        if (p > 0 && a > 0) {
+          totalAmt += a;
+          totalQty += (a / p);
+        }
+      }
+
+      if (totalAmt <= 0 || totalQty <= 0) {
+        alert('매수가와 투입금액을 1개 이상 입력해주세요.');
+        return;
+      }
+
+      const avgPrice = totalAmt / totalQty;
+      const feeRate = (parseFloat(document.getElementById('feePct').value) || 0) / 100;
+      const targetPct = (parseFloat(document.getElementById('targetPct').value) || 0) / 100;
+      const curPrice = parseFloat(document.getElementById('curPrice').value);
+
+      const buyFee = totalAmt * feeRate;
+      const realCost = totalAmt + buyFee;
+
+      document.getElementById('avgPrice').textContent = fmt(avgPrice, 4);
+      document.getElementById('totalPrincipal').textContent = fmt(totalAmt, 0);
+      document.getElementById('totalQty').textContent = fmt(totalQty, 6);
+
+      if (curPrice > 0) {
+        const grossVal = totalQty * curPrice;
+        const sellFee = grossVal * feeRate;
+        const netVal = grossVal - sellFee;
+        const pnl = netVal - realCost;
+        const pnlPct = ((netVal - realCost) / realCost) * 100;
+        document.getElementById('curPnl').textContent = `${fmt(pnl, 0)} (${pnlPct >= 0 ? '+' : ''}${fmt(pnlPct, 2)}%)`;
+      } else {
+        document.getElementById('curPnl').textContent = '현재가 미입력';
+      }
+
+      // 매수·매도 수수료 고려 목표가
+      const targetPrice = (avgPrice * (1 + feeRate) * (1 + targetPct)) / (1 - feeRate);
+      document.getElementById('targetPrice').textContent = fmt(targetPrice, 4);
+
+      document.getElementById('resultBox').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
